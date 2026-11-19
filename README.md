@@ -75,3 +75,26 @@ no invented clock times, phases only); (3) the map is now a proportional
 block (380x232) at bottom-left beside the ALSO list, not a thin strip.
 End y is 1015 of 1024; asserts (kicker/headline/deck overflow, bottom
 margin per card, ALSO within map block) all pass; 2x runs byte-identical.
+
+## v4 (19 Nov 2026, revision of v3 — fadli: gambar diperbesar, tulisan diperkecil, peta HD)
+
+Same 33 stories, word for word (verified: AST compare v3→v4 — ALSO,
+NUMBERS, UTC_SLOTS, CONTINENTS identical; MAIN differs only by the
+removal of pin 11's dx/dy offset, see below); main.py unchanged. Three
+changes over v3: (1) photos much bigger, type smaller — hero panels
+64→100 px, small-card banners 30→56 px (photos re-cropped from the same
+1920x1280 files, centre-crop + LANCZOS); headline 17→15 pt (hero) and
+16→14 pt (small), deck 14→12 pt / 14→11 pt, ALSO 10→9.5 pt, kicker
+11→10 pt, masthead 46→40 pt, numbers strip 34→30 px, UTC strip 26→22 px,
+so the whole 1024 px page still balances; (2) map redrawn bigger and HD
+— 380x232→420x250, ocean vertical gradient, labelled graticule
+(30°/60°), ocean names, 2 px coastline, pins with shadow + white ring;
+pin 11 (Fed) now sits exactly on Washington DC (−77, 39) with NO offset
+(v3's +32/−20 offset landed in Canada — verified by projecting the pin
+centre); pin 9 keeps its leader line because it would otherwise sit on
+pin 6; (3) two defects found in self-review and fixed: numbers-strip
+captions were struck through by the strip rule (strip raised to 30 px)
+and the PACIFIC OCEAN label overflowed the map's left edge (re-centred
+to lon −136 after measuring its 94 px width). End y is 1015 of 1024,
+last ink row 1016 (7 px bottom gap); 2x runs byte-identical
+(sha256 c435fcf87ec736743f9ad6a8e29d1c471186f180c21d362686b6e0ce616391ab).
