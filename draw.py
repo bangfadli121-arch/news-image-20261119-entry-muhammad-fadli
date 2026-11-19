@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
-"""Draw entry.png v4 for news-image-20261119: 'The World - Thursday 19 November 2026'.
+"""Draw entry.png v5 for news-image-20261119: 'The World - Thursday 19 November 2026'.
 
-v4 (fadli: gambar diperbesar, tulisan diperkecil, peta HD): foto hero 100px
-dan banner kartu kecil 56px (v3: 64px/30px), headline/deck/ALSO diperkecil,
-peta 420x250 dengan gradasi laut + label samudra + pin 11 di Washington DC
-tanpa offset (v3: offset mendarat di Kanada). Isi 33 berita, masthead,
-Judge Note, footer, strip angka dan strip UTC TIDAK BERUBAH dari v3.
+v5 (fadli: gambar 4-11 kecil bngt, tulisan diperkecil tapi jelas, gambar
+diperbesar, peta lebih nyata): banner kartu kecil 56->84px (v4) dengan kartu
+174px, panel hero 100->115px (hero 202px), huruf diperkecil lagi (hero
+headline 15->14pt, deck 12->11pt; kartu kecil 14->13pt / 11->10pt; ALSO
+10->9.5->9pt; masthead 40->37pt; strip angka 30->27px, strip UTC 22->20px)
+tapi tinta lebih pekat (headline RGB 16, deck 30) supaya tetap jelas.
+Foto tetap 11 foto yang sama, TAPI crop per foto digeser dari centre-crop
+buta (CROP_FOCUS: hero 3 ke atas 0.25 supaya bendera + kepala kebaca,
+hero 2 ke bawah 0.60 supaya bendera + meja kebaca, dst). Peta 420x250 ->
+448x242: shading terrain lembut di daratan, batas negara besar, pulau
+(Jepang, Indonesia, Madagaskar, NZ, Islandia, Kuba, Filipina), label
+benua, kompas, pin r=8 (pin 8 Houston vs pin 5 Miami berjarak 19.5px,
+gap 3.5px). Isi 33 berita, masthead, Judge Note, footer, strip angka
+dan strip UTC TIDAK BERUBAH dari v4.
 """
 import os
 import sys
@@ -13,14 +22,17 @@ from PIL import Image, ImageDraw, ImageFont
 
 W, H = 1024, 1024
 PAPER = (247, 241, 222)
-INK = (28, 28, 26)
+INK = (16, 16, 14)          # v5: hitam pekat untuk headline
+DECK = (30, 30, 28)         # v5: deck minimal RGB 30, tetap kontras tinggi
 RED = (176, 32, 32)
 DARKRED = (120, 20, 20)
-MUTED = (112, 102, 86)
+MUTED = (90, 82, 66)        # v5: digelapkan (v4: 112,102,86) supaya jelas
 RULE = (40, 40, 38)
 OCEAN = (214, 230, 227)
 LAND = (198, 206, 158)
 LANDB = (138, 150, 102)
+BORDERLINE = (105, 116, 78)  # v5: batas negara, lebih redup dari pantai
+CONTLBL = (96, 104, 72)      # v5: label benua di atas daratan
 GOLD = (176, 138, 58)
 
 FD = "/usr/share/fonts/truetype/dejavu/"
@@ -197,6 +209,79 @@ CONTINENTS = [
      (-3, 50), (-5, 50)],
 ]
 
+# v5: pulau-pulau besar yang tidak ada di CONTINENTS (data terpisah, agar
+# CONTINENTS tetap identik dengan v4). Digambar + di-shading seperti daratan.
+ISLANDS = [
+    # Japan
+    [(130, 31), (132, 33), (135, 34), (137, 36), (139, 38), (141, 41),
+     (143, 42), (145, 44), (143, 44), (141, 40), (139, 37), (136, 34),
+     (132, 32), (130, 31)],
+    # Sumatra
+    [(95, 5), (98, 3), (100, 0), (103, -2), (106, -6), (104, -6),
+     (101, -3), (98, 0), (95, 3), (95, 5)],
+    # Borneo
+    [(109, 1), (112, 4), (116, 6), (119, 2), (118, -2), (115, -4),
+     (111, -3), (109, -1), (109, 1)],
+    # Java
+    [(105, -6), (108, -7), (111, -7), (114, -8), (114, -7), (110, -6),
+     (106, -6), (105, -6)],
+    # New Guinea
+    [(131, -1), (135, -2), (140, -3), (145, -6), (150, -9), (147, -8),
+     (142, -8), (137, -5), (133, -3), (131, -1)],
+    # Madagascar
+    [(44, -16), (47, -15), (50, -16), (49, -20), (46, -24), (44, -22),
+     (43, -18), (44, -16)],
+    # New Zealand
+    [(167, -45), (170, -42), (174, -39), (177, -38), (178, -37),
+     (175, -40), (172, -43), (168, -46), (167, -45)],
+    # Iceland
+    [(-18, 63.5), (-15, 64), (-13, 65), (-16, 66), (-20, 66), (-22, 65),
+     (-20, 64), (-18, 63.5)],
+    # Cuba
+    [(-85, 22), (-80, 23), (-75, 20), (-74, 20), (-78, 22), (-85, 22)],
+    # Philippines (Luzon + Mindanao, satu gumpalan kasar)
+    [(120, 18), (122, 18), (122, 14), (123, 11), (122, 7), (121, 10),
+     (120, 13), (120, 18)],
+]
+
+# v5: batas negara besar (garis tipis di dalam daratan, perkiraan kasar —
+# bukan batas resmi). Digambar SEBELUM garis pantai supaya pantai tetap
+# paling tegas.
+BORDERS = [
+    # US - Canada (lewat Great Lakes, perkiraan)
+    [(-124, 49), (-110, 49), (-95, 49), (-89, 48), (-83, 43), (-79, 43),
+     (-75, 45), (-70, 44), (-66, 45)],
+    # US - Mexico
+    [(-117, 32.5), (-111, 31), (-106, 31.5), (-101, 29.5), (-97, 26)],
+    # Brazil utara (perkiraan, sepanjang Amazon utara)
+    [(-70, 11), (-66, 8), (-62, 6), (-57, 4), (-52, 4), (-50, 0)],
+    # Brazil - Argentina / Uruguay
+    [(-57, -22), (-55, -27), (-53, -33)],
+    # Rusia selatan (Kazakhstan / Mongolia)
+    [(75, 49), (85, 50), (95, 50), (105, 50), (115, 51), (122, 52)],
+    # Rusia - Cina
+    [(122, 52), (130, 48), (135, 44), (131, 42)],
+    # Cina - India
+    [(78, 35), (84, 30), (90, 28), (97, 29)],
+    # Pakistan - India
+    [(70, 24), (72, 28), (75, 33), (78, 35)],
+    # Prancis - Jerman
+    [(3, 49), (6, 49), (7, 47)],
+    # Prancis - Spanyol
+    [(-2, 43.5), (0, 42.5), (3, 42.3)],
+    # Jerman - Polandia
+    [(14, 54), (14, 51), (15, 50)],
+    # Norwegia - Swedia
+    [(12, 59), (15, 64), (18, 69)],
+    # Mesir - Sudan
+    [(25, 22), (33, 22)],
+    # Niger - Nigeria
+    [(3, 12), (10, 13)],
+    # Afrika Selatan, batas utara (perkiraan)
+    [(16, -28), (20, -29), (25, -28), (28, -26)],
+]
+
+
 # ------------------------------------------------------------------- icons
 # Flat vector-style icons, drawn with PIL shapes inside a box (x, y, w, h).
 def icon_missile(d, x, y, w, h):
@@ -348,11 +433,19 @@ def project(x0, y0, x1, y1, lon, lat):
     return px, py
 
 
-def draw_map(d, x0, y0, x1, y1, pin_r=9):
-    """v4 HD map: ocean vertical gradient, labelled graticule, ocean names,
-    2px coastline, pins with shadow + white ring. Pin 11 (Fed) sits exactly
-    on Washington DC (-77, 39) with NO offset; pin 9 keeps its leader line
-    because it would otherwise sit on top of pin 6 (both ~lon 4.4)."""
+def draw_map(d, x0, y0, x1, y1, pin_r=8):
+    """v5 realistic map (448x242): ocean vertical gradient, terrain shading
+    on land (soft deterministic blobs clipped to the land mask, blurred),
+    1px country borders for major states, islands (Japan, Indonesia,
+    Madagascar, NZ, Iceland, Cuba, Philippines), continent labels,
+    labelled graticule, ocean names, compass rose bottom-left. Pin 11
+    (Fed) sits exactly on Washington DC (-77, 39) with NO offset; pin 9
+    keeps its leader line (it would otherwise sit on pin 6, both ~lon
+    4.4). Pin 8 (Houston) vs pin 5 (Miami): centres 19.5px apart, pin
+    r=8 -> 3.5px clear gap. EUROPE label omitted on purpose: pins 6/7/9
+    cover every spot a label could sit in Europe."""
+    from PIL import ImageFilter
+    import random
     mw, mh = x1 - x0, y1 - y0
     # ocean: smooth vertical gradient (light top -> deeper bottom)
     grad = Image.new("RGB", (1, mh))
@@ -361,6 +454,31 @@ def draw_map(d, x0, y0, x1, y1, pin_r=9):
                         for i in range(3)) for j in range(mh)])
     d._image.paste(grad.resize((mw, mh)), (x0, y0))
     d.rectangle([x0, y0, x1, y1], outline=RULE, width=1)
+    # --- terrain: land mask from CONTINENTS + ISLANDS
+    mask = Image.new("L", (mw, mh), 0)
+    md = ImageDraw.Draw(mask)
+    land_polys = []
+    for poly in CONTINENTS + ISLANDS:
+        pts = [project(x0, y0, x1, y1, lo, la) for lo, la in poly]
+        land_polys.append(pts)
+        md.polygon([(px - x0, py - y0) for px, py in pts], fill=255)
+    # soft mottling: deterministic blobs, blurred, clipped by the mask
+    terrain = Image.new("RGB", (mw, mh), LAND)
+    patch = Image.new("RGBA", (mw, mh), (0, 0, 0, 0))
+    pd = ImageDraw.Draw(patch)
+    rng = random.Random(19)
+    shades = [(188, 198, 140), (208, 212, 168), (176, 186, 128),
+              (202, 200, 150), (190, 196, 132)]
+    for _ in range(30):
+        cx, cy = rng.uniform(0, mw), rng.uniform(0, mh)
+        rx, ry = rng.uniform(18, 55), rng.uniform(10, 30)
+        col = rng.choice(shades)
+        pd.ellipse([cx - rx, cy - ry, cx + rx, cy + ry],
+                   fill=col + (rng.randint(45, 70),))
+    patch = patch.filter(ImageFilter.GaussianBlur(14))
+    terrain = Image.alpha_composite(terrain.convert("RGBA"), patch).convert("RGB")
+    d._image.paste(terrain, (x0, y0), mask)
+    # --- graticule (under land labels, over ocean)
     grat_f = font(SANS, 8)
     for lat in (-60, -30, 0, 30, 60):
         _, py = project(x0, y0, x1, y1, 0, lat)
@@ -372,16 +490,36 @@ def draw_map(d, x0, y0, x1, y1, pin_r=9):
         d.line([px, y0, px, y1], fill=(186, 205, 202), width=1)
         lab = "%d%s" % (abs(lon), "W" if lon < 0 else ("E" if lon > 0 else ""))
         d.text((px + 3, y1 - 11), lab, font=grat_f, fill=(120, 140, 138))
+    # --- ocean names
     ocean_f = font(SERIF, 11)
     for txt, lo, la in (("PACIFIC OCEAN", -136, -8), ("ATLANTIC", -28, -35),
                         ("INDIAN OCEAN", 75, -32), ("PACIFIC", 155, -45)):
         ox, oy = project(x0, y0, x1, y1, lo, la)
         d.text((ox - ocean_f.getlength(txt) / 2, oy), txt, font=ocean_f,
                fill=(110, 138, 136))
-    for poly in CONTINENTS:
+    # --- country borders first, then crisp coastline on top
+    for poly in BORDERS:
         pts = [project(x0, y0, x1, y1, lo, la) for lo, la in poly]
-        d.polygon(pts, fill=LAND, outline=LANDB)
+        d.line(pts, fill=BORDERLINE, width=1)
+    for pts in land_polys:
+        d.polygon(pts, outline=LANDB)
         d.line(pts + [pts[0]], fill=LANDB, width=2)
+    # --- continent / region labels (EUROPE omitted: pins 6/7/9 cover it)
+    cont_f = font(SANSB, 9)
+    for txt, lo, la in (("NORTH AMERICA", -102, 58), ("SOUTH AMERICA", -58, -14),
+                        ("AFRICA", 20, 4), ("ASIA", 95, 52),
+                        ("AUSTRALIA", 134, -25)):
+        ox, oy = project(x0, y0, x1, y1, lo, la)
+        d.text((ox - cont_f.getlength(txt) / 2, oy), txt, font=cont_f,
+               fill=CONTLBL)
+    # --- compass rose, bottom-left over empty South Pacific
+    ccx, ccy = x0 + 58, y1 - 24
+    d.ellipse([ccx - 9, ccy - 9, ccx + 9, ccy + 9], outline=(90, 90, 88),
+              width=1, fill=(247, 241, 222))
+    d.polygon([(ccx, ccy - 7), (ccx + 2.5, ccy + 2), (ccx - 2.5, ccy + 2)],
+              fill=RED)
+    d.text((ccx - 3, ccy - 16), "N", font=font(SANSB, 8), fill=INK)
+    # --- pins
     small = font(SANSB, 10)
     for s in MAIN:
         tx, ty = project(x0, y0, x1, y1, s["lon"], s["lat"])
@@ -409,8 +547,9 @@ def draw_map(d, x0, y0, x1, y1, pin_r=9):
 # ------------------------------------------------------------------- photos
 # Fotorealistik HD (1920x1280, hasil generate) di photos/ di bawah repo.
 # draw.py load via path relatif terhadap file ini (kit me-re-run draw.py
-# dari repo, jadi foto ikut di-push). Crop tengah deterministik ke aspek
-# slot, resize LANCZOS (downscale dari 1920px -> tajam, tidak buram).
+# dari repo, jadi foto ikut di-push). Crop vertikal per foto (CROP_FOCUS,
+# v5) ke aspek slot, resize LANCZOS (downscale dari 1920px -> tajam,
+# tidak buram).
 HERE = os.path.dirname(os.path.abspath(__file__))
 PHOTOS = os.path.join(HERE, "photos")
 PHOTO_FILES = {
@@ -420,6 +559,16 @@ PHOTO_FILES = {
     10: "card10-cyclone.webp", 11: "card11-fed.webp",
 }
 _photo_cache = {}
+
+
+# v5: crop focus per foto = posisi vertikal jendela crop sebagai fraksi
+# dari slack vertikal (0 = paling atas, 0.5 = tengah, 1 = paling bawah).
+# Dipilih setelah melihat tiap foto 1920x1280: 3 ke atas (bendera US/Rusia
+# + kepala di y 150-750, meja di bawah), 2 ke bawah (bendera di y 700-880),
+# 9 ke atas (menara + fasad di y 110-850, halaman di bawah), 11 ke bawah
+# (gedung di y 380-950, langit di atas), 4/6 sedikit dari tengah.
+CROP_FOCUS = {1: 0.45, 2: 0.60, 3: 0.25, 4: 0.55, 5: 0.45, 6: 0.40,
+              7: 0.50, 8: 0.50, 9: 0.35, 10: 0.50, 11: 0.55}
 
 
 def photo_slot(n, w, h):
@@ -436,7 +585,9 @@ def photo_slot(n, w, h):
         im = im.crop((x0, 0, x0 + nw, sh))
     else:
         nh = int(sw / target)
-        y0 = (sh - nh) // 2
+        focus = CROP_FOCUS.get(n, 0.5)
+        y0 = int(round(focus * (sh - nh)))
+        y0 = max(0, min(sh - nh, y0))
         im = im.crop((0, y0, sw, y0 + nh))
     im = im.resize((w, h), Image.LANCZOS)
     _photo_cache[key] = im
@@ -466,15 +617,15 @@ UTC_SLOTS = [
 ]
 
 
-def draw_numbers_strip(d, y, h=30):
+def draw_numbers_strip(d, y, h=27):
     d.line([26, y, W - 26, y], fill=RULE, width=1)
     cw = (W - 52) // 6
-    big_f = font(SERIFB, 17)
+    big_f = font(SERIFB, 16)
     cap_f = font(SANS, 8)
     for i, (num, cap) in enumerate(NUMBERS):
         cx = 26 + i * cw + cw // 2
         d.text((cx, y + 1), num, font=big_f, fill=RED, anchor="ma")
-        d.text((cx, y + 19), cap, font=cap_f, fill=INK, anchor="ma")
+        d.text((cx, y + 17), cap, font=cap_f, fill=INK, anchor="ma")
         if i:
             d.line([26 + i * cw, y + 4, 26 + i * cw, y + h - 4],
                    fill=(210, 200, 175), width=1)
@@ -482,96 +633,98 @@ def draw_numbers_strip(d, y, h=30):
     return y + h
 
 
-def draw_utc_strip(d, y, h=22):
+def draw_utc_strip(d, y, h=20):
     d.rectangle([26, y, 26 + 108, y + h], fill=RED)
-    lab_f = font(SANSB, 10)
+    lab_f = font(SANSB, 9)
     d.text((26 + 54, y + h // 2), "THE DAY IN UTC", font=lab_f,
            fill=(255, 255, 255), anchor="mm")
     x0 = 26 + 108 + 8
     cw = (W - 26 - x0) // 5
     ph_f = font(SANSB, 9)
-    ev_f = font(SANS, 9)
+    ev_f = font(SANS, 8)
     for i, (ph, ev) in enumerate(UTC_SLOTS):
         x = x0 + i * cw
         assert ev_f.getlength(ev) <= cw - 6, f"UTC slot overflows: {ev!r}"
         d.text((x, y + 1), ph, font=ph_f, fill=RED)
-        d.text((x, y + 11), ev, font=ev_f, fill=INK)
+        d.text((x, y + 10), ev, font=ev_f, fill=INK)
     d.line([26, y + h, W - 26, y + h], fill=RULE, width=1)
     return y + h
 
 
 def draw_header_v3(d, y):
-    centered(d, W // 2, y, "THE WORLD", font(SERIFB, 40), INK)
-    y += 40 + 3
+    centered(d, W // 2, y, "THE WORLD", font(SERIFB, 37), INK)
+    y += 37 + 3
     d.line([26, y, W - 26, y], fill=RULE, width=2)
     y += 4
-    centered(d, W // 2, y, "THURSDAY 19 NOVEMBER 2026", font(SANSB, 13), INK)
-    y += 17
+    centered(d, W // 2, y, "THURSDAY 19 NOVEMBER 2026", font(SANSB, 12), INK)
+    y += 15
     centered(d, W // 2, y, "33 STORIES  \u00b7  6 CONTINENTS  \u00b7  ONE PAGE",
-             font(SANS, 11), MUTED)
-    y += 13
+             font(SANS, 10), MUTED)
+    y += 12
     d.line([26, y, W - 26, y], fill=RULE, width=1)
     return y + 5
 
 
-def hero_card_photo(d, x, y, w, h, s, photo_h=100):
-    """v4: panel foto 100px (v3: 64px), headline 15pt, deck 12pt."""
-    num_f = font(SERIFB, 18)
-    kick_f = font(SANSB, 10)
-    head_f = font(SERIFB, 15)
-    deck_f = font(SANS, 12)
+def hero_card_photo(d, x, y, w, h, s, photo_h=115):
+    """v5: panel foto 115px (v4: 100px), headline 14pt, deck 11pt, tinta
+    pekat (INK 16 / DECK 30)."""
+    num_f = font(SERIFB, 17)
+    kick_f = font(SANSB, 9)
+    head_f = font(SERIFB, 14)
+    deck_f = font(SANS, 11)
     d.rectangle([x, y, x + w, y + h], fill=(253, 251, 243), outline=RULE, width=1)
     d._image.paste(photo_slot(s["n"], w - 2, photo_h), (x + 1, y + 1))
     ty = y + photo_h + 5
-    d.rectangle([x + 8, ty, x + 28, ty + 20], fill=RED)
+    d.rectangle([x + 8, ty, x + 28, ty + 18], fill=RED)
     num = str(s["n"])
     d.text((x + 18 - num_f.getlength(num) / 2, ty - 1), num, font=num_f,
            fill=(255, 255, 255))
     kw = kick_f.getlength(s["kicker"])
     assert kw <= w - 40, f"hero {s['n']} kicker overflows: {kw:.1f}px"
     d.text((x + 34, ty + 4), s["kicker"], font=kick_f, fill=RED)
-    yy = ty + 24
+    yy = ty + 22
     for ln in wrap(s["head"], head_f, w - 16):
         assert head_f.getlength(ln) <= w - 16, f"hero {s['n']} head overflows"
         d.text((x + 8, yy), ln, font=head_f, fill=INK)
-        yy += 16
+        yy += 15
     yy += 2
     for ln in wrap(s["deck"], deck_f, w - 16):
         assert deck_f.getlength(ln) <= w - 16, f"hero {s['n']} deck overflows"
-        d.text((x + 8, yy), ln, font=deck_f, fill=(38, 36, 32))
-        yy += 13
+        d.text((x + 8, yy), ln, font=deck_f, fill=DECK)
+        yy += 12
     margin = y + h - yy
     print(f"hero {s['n']}: bottom margin {margin}px")
     assert margin >= 2, f"hero {s['n']} text overflows by {-margin}px"
     return yy
 
 
-def small_card_photo(d, x, y, w, h, s, photo_h=56):
-    """v4: banner foto 56px (v3: 30px), headline 14pt, deck 11pt."""
-    num_f = font(SERIFB, 16)
-    kick_f = font(SANSB, 10)
-    head_f = font(SERIFB, 14)
-    deck_f = font(SANS, 11)
+def small_card_photo(d, x, y, w, h, s, photo_h=84):
+    """v5: banner foto 84px (v4: 56px), headline 13pt, deck 10pt, tinta
+    pekat (INK 16 / DECK 30)."""
+    num_f = font(SERIFB, 15)
+    kick_f = font(SANSB, 9)
+    head_f = font(SERIFB, 13)
+    deck_f = font(SANS, 10)
     d.rectangle([x, y, x + w, y + h], fill=(253, 251, 243), outline=RULE, width=1)
     d._image.paste(photo_slot(s["n"], w - 2, photo_h), (x + 1, y + 1))
     ty = y + photo_h + 4
-    d.rectangle([x + 8, ty, x + 26, ty + 18], fill=RED)
+    d.rectangle([x + 8, ty, x + 26, ty + 16], fill=RED)
     num = str(s["n"])
     d.text((x + 17 - num_f.getlength(num) / 2, ty - 1), num, font=num_f,
            fill=(255, 255, 255))
     kw = kick_f.getlength(s["kicker"])
     assert kw <= w - 44, f"small {s['n']} kicker overflows: {kw:.1f}px"
     d.text((x + 32, ty + 3), s["kicker"], font=kick_f, fill=RED)
-    yy = ty + 20
+    yy = ty + 18
     for ln in wrap(s["head"], head_f, w - 16):
         assert head_f.getlength(ln) <= w - 16, f"small {s['n']} head overflows"
         d.text((x + 8, yy), ln, font=head_f, fill=INK)
-        yy += 15
+        yy += 14
     yy += 2
     for ln in wrap(s["deck"], deck_f, w - 16):
         assert deck_f.getlength(ln) <= w - 16, f"small {s['n']} deck overflows"
-        d.text((x + 8, yy), ln, font=deck_f, fill=(38, 36, 32))
-        yy += 12
+        d.text((x + 8, yy), ln, font=deck_f, fill=DECK)
+        yy += 11
     margin = y + h - yy
     print(f"small {s['n']}: bottom margin {margin}px")
     assert margin >= 2, f"small {s['n']} text overflows by {-margin}px"
@@ -612,7 +765,7 @@ def draw_story(d, x, y, w, s, head_size=18, deck_size=14, max_deck_lines=3):
         y += head_size + 1
     y += 1
     for ln in wrap(s["deck"], deck_f, w)[:max_deck_lines]:
-        d.text((x, y), ln, font=deck_f, fill=(38, 36, 32))
+        d.text((x, y), ln, font=deck_f, fill=DECK)
         y += deck_size + 1
     return y
 
@@ -658,10 +811,11 @@ def draw_judge_footer(d, y):
 
 # ---------------------------------------------------------------- layout A
 def render_a(path):
-    """v4: masthead 40pt + strip angka 28px + strip UTC 22px + 3 hero foto
-    100px + 8 kartu kecil foto 56px (2 baris x 4) + peta HD 420x250
-    bawah-kiri + ALSO 22 (9.5pt). Isi 33 berita, Judge Note dan footer
-    TIDAK berubah dari v3 — hanya ukuran font dan geometri layout."""
+    """v5: masthead 37pt + strip angka 27px + strip UTC 20px + 3 hero foto
+    115px (202px) + 8 kartu kecil foto 84px (174px, 2 baris x 4) + peta
+    realistis 448x242 bawah-kiri + ALSO 22 (9pt). Isi 33 berita, Judge
+    Note dan footer TIDAK berubah dari v4 — hanya ukuran font, crop foto,
+    dan geometri layout."""
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
     y = draw_header_v3(d, 6)
@@ -671,14 +825,14 @@ def render_a(path):
     # hero 1-3
     gap = 12
     cw = (W - 52 - gap * 2) // 3
-    hero_h = 207
+    hero_h = 202
     for c in range(3):
         x = 26 + c * (cw + gap)
         hero_card_photo(d, x, y, cw, hero_h, MAIN[c])
     y += hero_h + 4
     # kartu kecil 4-11: 2 baris x 4 kolom
     scw = (W - 52 - gap * 3) // 4
-    sch = 162
+    sch = 174
     for r in range(2):
         for c in range(4):
             idx = 3 + r * 4 + c
@@ -688,18 +842,18 @@ def render_a(path):
     # bawah: peta blok kiri + ALSO kanan
     d.line([26, y, W - 26, y], fill=RULE, width=2)
     y += 6
-    d.text((26, y), "WHERE IT HAPPENED", font=font(SANSB, 13), fill=INK)
-    d.text((462, y), "ALSO ON THURSDAY 19 NOVEMBER \u2014 22 MORE STORIES",
-           font=font(SANSB, 13), fill=INK)
-    y += 19
-    map_h = 250
-    draw_map(d, 26, y, 26 + 420, y + map_h)
-    y2 = draw_also(d, y, cols=2, item_size=9.5, x0=462)
+    d.text((26, y), "WHERE IT HAPPENED", font=font(SANSB, 12), fill=INK)
+    d.text((490, y), "ALSO ON THURSDAY 19 NOVEMBER \u2014 22 MORE STORIES",
+           font=font(SANSB, 12), fill=INK)
+    y += 18
+    map_h = 242
+    draw_map(d, 26, y, 26 + 448, y + map_h)
+    y2 = draw_also(d, y, cols=2, item_size=9, x0=490)
     print("ALSO bottom:", y2, "map bottom:", y + map_h)
     assert y2 <= y + map_h + 4, f"ALSO overflows map block: {y2} > {y + map_h}"
     y = y + map_h + 6
     y = draw_judge_footer(d, y)
-    print("v4 end y =", y)
+    print("v5 end y =", y)
     assert y <= 1022, f"end y {y} exceeds canvas"
     img.save(path, optimize=True)
     print("A saved", path, "end y =", y)
