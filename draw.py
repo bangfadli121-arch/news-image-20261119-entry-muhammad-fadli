@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Draw entry.png v3 for news-image-20261119: 'The World - Thursday 19 November 2026'.
+"""Draw entry.png v4 for news-image-20261119: 'The World - Thursday 19 November 2026'.
 
-Classic newspaper front page, 1024x1024, cream paper. All story text is the
-verified set supplied with the task; nothing is invented here. Two layouts:
-  A = classic newspaper (masthead, map band, 3-col stories, 2-col also-list)
-  B = hero top story + dominant map, 3-col stories
-Render:  python3 draw.py A   -> variant_a.png
-         python3 draw.py B   -> variant_b.png
+v4 (fadli: gambar diperbesar, tulisan diperkecil, peta HD): foto hero 100px
+dan banner kartu kecil 56px (v3: 64px/30px), headline/deck/ALSO diperkecil,
+peta 420x250 dengan gradasi laut + label samudra + pin 11 di Washington DC
+tanpa offset (v3: offset mendarat di Kanada). Isi 33 berita, masthead,
+Judge Note, footer, strip angka dan strip UTC TIDAK BERUBAH dari v3.
 """
 import os
 import sys
@@ -111,7 +110,7 @@ MAIN = [
     dict(n=11, kicker="UNITED STATES · ECONOMY",
          head="Fed minutes point to more rate rises",
          deck="Most officials expect further hikes if inflation and jobs stay hot.",
-         icon="chart", lon=-77, lat=39, dx=32, dy=-20),
+         icon="chart", lon=-77, lat=39),
 ]
 
 ALSO = [
@@ -349,35 +348,61 @@ def project(x0, y0, x1, y1, lon, lat):
     return px, py
 
 
-def draw_map(d, x0, y0, x1, y1, pin_r=11):
-    d.rectangle([x0, y0, x1, y1], fill=OCEAN, outline=RULE, width=1)
+def draw_map(d, x0, y0, x1, y1, pin_r=9):
+    """v4 HD map: ocean vertical gradient, labelled graticule, ocean names,
+    2px coastline, pins with shadow + white ring. Pin 11 (Fed) sits exactly
+    on Washington DC (-77, 39) with NO offset; pin 9 keeps its leader line
+    because it would otherwise sit on top of pin 6 (both ~lon 4.4)."""
+    mw, mh = x1 - x0, y1 - y0
+    # ocean: smooth vertical gradient (light top -> deeper bottom)
+    grad = Image.new("RGB", (1, mh))
+    top, bot = (219, 233, 230), (193, 216, 214)
+    grad.putdata([tuple(top[i] + (bot[i] - top[i]) * j // (mh - 1)
+                        for i in range(3)) for j in range(mh)])
+    d._image.paste(grad.resize((mw, mh)), (x0, y0))
+    d.rectangle([x0, y0, x1, y1], outline=RULE, width=1)
+    grat_f = font(SANS, 8)
     for lat in (-60, -30, 0, 30, 60):
         _, py = project(x0, y0, x1, y1, 0, lat)
-        d.line([x0, py, x1, py], fill=(200, 215, 212), width=1)
+        d.line([x0, py, x1, py], fill=(186, 205, 202), width=1)
+        lab = "%d%s" % (abs(lat), "N" if lat > 0 else ("S" if lat < 0 else ""))
+        d.text((x0 + 3, py - 11), lab, font=grat_f, fill=(120, 140, 138))
     for lon in (-120, -60, 0, 60, 120):
         px, _ = project(x0, y0, x1, y1, lon, 0)
-        d.line([px, y0, px, y1], fill=(200, 215, 212), width=1)
+        d.line([px, y0, px, y1], fill=(186, 205, 202), width=1)
+        lab = "%d%s" % (abs(lon), "W" if lon < 0 else ("E" if lon > 0 else ""))
+        d.text((px + 3, y1 - 11), lab, font=grat_f, fill=(120, 140, 138))
+    ocean_f = font(SERIF, 11)
+    for txt, lo, la in (("PACIFIC OCEAN", -136, -8), ("ATLANTIC", -28, -35),
+                        ("INDIAN OCEAN", 75, -32), ("PACIFIC", 155, -45)):
+        ox, oy = project(x0, y0, x1, y1, lo, la)
+        d.text((ox - ocean_f.getlength(txt) / 2, oy), txt, font=ocean_f,
+               fill=(110, 138, 136))
     for poly in CONTINENTS:
         pts = [project(x0, y0, x1, y1, lo, la) for lo, la in poly]
         d.polygon(pts, fill=LAND, outline=LANDB)
-    small = font(SANSB, 11)
+        d.line(pts + [pts[0]], fill=LANDB, width=2)
+    small = font(SANSB, 10)
     for s in MAIN:
         tx, ty = project(x0, y0, x1, y1, s["lon"], s["lat"])
         px, py = tx + s.get("dx", 0), ty + s.get("dy", 0)
         if s.get("dx") or s.get("dy"):
             d.line([tx, ty, px, py], fill=(90, 90, 88), width=1)
             d.ellipse([tx - 2, ty - 2, tx + 2, ty + 2], fill=INK)
+        # soft shadow, then red disc with white ring
+        d.ellipse([px - pin_r + 1, py - pin_r + 2, px + pin_r + 1, py + pin_r + 2],
+                  fill=(90, 90, 85))
         d.ellipse([px - pin_r, py - pin_r, px + pin_r, py + pin_r],
                   fill=RED, outline=(255, 255, 255), width=2)
         num = str(s["n"])
         tw = small.getlength(num)
-        d.text((px - tw / 2, py - 7), num, font=small, fill=(255, 255, 255))
+        d.text((px - tw / 2, py - 6), num, font=small, fill=(255, 255, 255))
     # caption strip, top-left, with a paper backing so it stays readable
-    lab_f = font(SANSB, 12)
+    lab_f = font(SANSB, 11)
     lab = "THE WORLD AT A GLANCE — 11 STORIES PINNED"
-    d.rectangle([x0 + 4, y0 + 4, x0 + 12 + lab_f.getlength(lab), y0 + 22],
+    d.rectangle([x0 + 4, y0 + 4, x0 + 12 + lab_f.getlength(lab), y0 + 20],
                 fill=PAPER)
-    d.text((x0 + 8, y0 + 6), lab, font=lab_f, fill=RED)
+    d.text((x0 + 8, y0 + 5), lab, font=lab_f, fill=RED)
 
 
 
@@ -441,112 +466,112 @@ UTC_SLOTS = [
 ]
 
 
-def draw_numbers_strip(d, y, h=34):
+def draw_numbers_strip(d, y, h=30):
     d.line([26, y, W - 26, y], fill=RULE, width=1)
     cw = (W - 52) // 6
-    big_f = font(SERIFB, 20)
-    cap_f = font(SANS, 9)
+    big_f = font(SERIFB, 17)
+    cap_f = font(SANS, 8)
     for i, (num, cap) in enumerate(NUMBERS):
         cx = 26 + i * cw + cw // 2
-        d.text((cx, y + 2), num, font=big_f, fill=RED, anchor="ma")
-        d.text((cx, y + 24), cap, font=cap_f, fill=INK, anchor="ma")
+        d.text((cx, y + 1), num, font=big_f, fill=RED, anchor="ma")
+        d.text((cx, y + 19), cap, font=cap_f, fill=INK, anchor="ma")
         if i:
-            d.line([26 + i * cw, y + 5, 26 + i * cw, y + h - 5],
+            d.line([26 + i * cw, y + 4, 26 + i * cw, y + h - 4],
                    fill=(210, 200, 175), width=1)
     d.line([26, y + h, W - 26, y + h], fill=RULE, width=1)
     return y + h
 
 
-def draw_utc_strip(d, y, h=26):
+def draw_utc_strip(d, y, h=22):
     d.rectangle([26, y, 26 + 108, y + h], fill=RED)
-    lab_f = font(SANSB, 11)
+    lab_f = font(SANSB, 10)
     d.text((26 + 54, y + h // 2), "THE DAY IN UTC", font=lab_f,
            fill=(255, 255, 255), anchor="mm")
     x0 = 26 + 108 + 8
     cw = (W - 26 - x0) // 5
-    ph_f = font(SANSB, 10)
-    ev_f = font(SANS, 10)
+    ph_f = font(SANSB, 9)
+    ev_f = font(SANS, 9)
     for i, (ph, ev) in enumerate(UTC_SLOTS):
         x = x0 + i * cw
         assert ev_f.getlength(ev) <= cw - 6, f"UTC slot overflows: {ev!r}"
-        d.text((x, y + 2), ph, font=ph_f, fill=RED)
-        d.text((x, y + 13), ev, font=ev_f, fill=INK)
+        d.text((x, y + 1), ph, font=ph_f, fill=RED)
+        d.text((x, y + 11), ev, font=ev_f, fill=INK)
     d.line([26, y + h, W - 26, y + h], fill=RULE, width=1)
     return y + h
 
 
 def draw_header_v3(d, y):
-    centered(d, W // 2, y, "THE WORLD", font(SERIFB, 46), INK)
-    y += 46 + 3
+    centered(d, W // 2, y, "THE WORLD", font(SERIFB, 40), INK)
+    y += 40 + 3
     d.line([26, y, W - 26, y], fill=RULE, width=2)
     y += 4
-    centered(d, W // 2, y, "THURSDAY 19 NOVEMBER 2026", font(SANSB, 16), INK)
-    y += 20
+    centered(d, W // 2, y, "THURSDAY 19 NOVEMBER 2026", font(SANSB, 13), INK)
+    y += 17
     centered(d, W // 2, y, "33 STORIES  \u00b7  6 CONTINENTS  \u00b7  ONE PAGE",
-             font(SANS, 12), MUTED)
-    y += 14
+             font(SANS, 11), MUTED)
+    y += 13
     d.line([26, y, W - 26, y], fill=RULE, width=1)
     return y + 5
 
 
-def hero_card_photo(d, x, y, w, h, s, photo_h=64):
-    """Kartu hero 1-3: panel foto selebar kartu di atas, teks di bawah."""
-    num_f = font(SERIFB, 20)
-    kick_f = font(SANSB, 11)
-    head_f = font(SERIFB, 17)
-    deck_f = font(SANS, 14)
+def hero_card_photo(d, x, y, w, h, s, photo_h=100):
+    """v4: panel foto 100px (v3: 64px), headline 15pt, deck 12pt."""
+    num_f = font(SERIFB, 18)
+    kick_f = font(SANSB, 10)
+    head_f = font(SERIFB, 15)
+    deck_f = font(SANS, 12)
     d.rectangle([x, y, x + w, y + h], fill=(253, 251, 243), outline=RULE, width=1)
     d._image.paste(photo_slot(s["n"], w - 2, photo_h), (x + 1, y + 1))
-    ty = y + photo_h + 6
-    d.rectangle([x + 8, ty, x + 30, ty + 22], fill=RED)
+    ty = y + photo_h + 5
+    d.rectangle([x + 8, ty, x + 28, ty + 20], fill=RED)
     num = str(s["n"])
-    d.text((x + 19 - num_f.getlength(num) / 2, ty - 1), num, font=num_f,
+    d.text((x + 18 - num_f.getlength(num) / 2, ty - 1), num, font=num_f,
            fill=(255, 255, 255))
     kw = kick_f.getlength(s["kicker"])
     assert kw <= w - 40, f"hero {s['n']} kicker overflows: {kw:.1f}px"
-    d.text((x + 36, ty + 4), s["kicker"], font=kick_f, fill=RED)
-    yy = ty + 26
+    d.text((x + 34, ty + 4), s["kicker"], font=kick_f, fill=RED)
+    yy = ty + 24
     for ln in wrap(s["head"], head_f, w - 16):
         assert head_f.getlength(ln) <= w - 16, f"hero {s['n']} head overflows"
         d.text((x + 8, yy), ln, font=head_f, fill=INK)
-        yy += 18
-    yy += 3
+        yy += 16
+    yy += 2
     for ln in wrap(s["deck"], deck_f, w - 16):
         assert deck_f.getlength(ln) <= w - 16, f"hero {s['n']} deck overflows"
         d.text((x + 8, yy), ln, font=deck_f, fill=(38, 36, 32))
-        yy += 15
+        yy += 13
     margin = y + h - yy
     print(f"hero {s['n']}: bottom margin {margin}px")
     assert margin >= 2, f"hero {s['n']} text overflows by {-margin}px"
     return yy
 
 
-def small_card_photo(d, x, y, w, h, s, photo_h=30):
-    """Kartu kecil 4-11: banner foto di atas, teks di bawah (deck 14pt)."""
-    num_f = font(SERIFB, 18)
-    kick_f = font(SANSB, 11)
-    head_f = font(SERIFB, 16)
-    deck_f = font(SANS, 14)
+def small_card_photo(d, x, y, w, h, s, photo_h=56):
+    """v4: banner foto 56px (v3: 30px), headline 14pt, deck 11pt."""
+    num_f = font(SERIFB, 16)
+    kick_f = font(SANSB, 10)
+    head_f = font(SERIFB, 14)
+    deck_f = font(SANS, 11)
     d.rectangle([x, y, x + w, y + h], fill=(253, 251, 243), outline=RULE, width=1)
     d._image.paste(photo_slot(s["n"], w - 2, photo_h), (x + 1, y + 1))
     ty = y + photo_h + 4
-    d.rectangle([x + 8, ty, x + 28, ty + 20], fill=RED)
+    d.rectangle([x + 8, ty, x + 26, ty + 18], fill=RED)
     num = str(s["n"])
-    d.text((x + 18 - num_f.getlength(num) / 2, ty - 1), num, font=num_f,
+    d.text((x + 17 - num_f.getlength(num) / 2, ty - 1), num, font=num_f,
            fill=(255, 255, 255))
     kw = kick_f.getlength(s["kicker"])
     assert kw <= w - 44, f"small {s['n']} kicker overflows: {kw:.1f}px"
-    d.text((x + 34, ty + 4), s["kicker"], font=kick_f, fill=RED)
-    yy = ty + 22
+    d.text((x + 32, ty + 3), s["kicker"], font=kick_f, fill=RED)
+    yy = ty + 20
     for ln in wrap(s["head"], head_f, w - 16):
         assert head_f.getlength(ln) <= w - 16, f"small {s['n']} head overflows"
         d.text((x + 8, yy), ln, font=head_f, fill=INK)
-        yy += 16
+        yy += 15
     yy += 2
     for ln in wrap(s["deck"], deck_f, w - 16):
         assert deck_f.getlength(ln) <= w - 16, f"small {s['n']} deck overflows"
         d.text((x + 8, yy), ln, font=deck_f, fill=(38, 36, 32))
-        yy += 14
+        yy += 12
     margin = y + h - yy
     print(f"small {s['n']}: bottom margin {margin}px")
     assert margin >= 2, f"small {s['n']} text overflows by {-margin}px"
@@ -614,28 +639,29 @@ def draw_also(d, y, cols=2, item_size=12.5, x0=26):
 
 
 def draw_judge_footer(d, y):
-    box_h = 30
+    box_h = 24
     d.rectangle([26, y, W - 26, y + box_h], outline=RED, width=2)
-    lab_f = font(SANSB, 12)
-    txt_f = font(SANS, 12)
+    lab_f = font(SANSB, 11)
+    txt_f = font(SANS, 11)
     lab = "JUDGE NOTE:  "
-    d.text((38, y + 8), lab, font=lab_f, fill=RED)
-    d.text((38 + lab_f.getlength(lab), y + 8),
+    d.text((38, y + 6), lab, font=lab_f, fill=RED)
+    d.text((38 + lab_f.getlength(lab), y + 6),
            "Every story above happened, or was first reported, on Thursday 19 November 2026. "
            "Disputed claims are attributed, not stated as fact.",
            font=txt_f, fill=INK)
     y += box_h + 6
     centered(d, W // 2, y,
              "Reporting: AP · Reuters · AFP · BBC · Al Jazeera · The Guardian · Financial Times",
-             font(SANS, 12), MUTED)
-    return y + 12
+             font(SANS, 11), MUTED)
+    return y + 11
 
 
 # ---------------------------------------------------------------- layout A
 def render_a(path):
-    """v3: masthead padat + strip angka + strip UTC + 3 hero foto +
-    8 kartu kecil foto (2 baris x 4) + peta blok bawah-kiri + ALSO 22.
-    Isi 33 berita, Judge Note dan footer TIDAK berubah dari v2."""
+    """v4: masthead 40pt + strip angka 28px + strip UTC 22px + 3 hero foto
+    100px + 8 kartu kecil foto 56px (2 baris x 4) + peta HD 420x250
+    bawah-kiri + ALSO 22 (9.5pt). Isi 33 berita, Judge Note dan footer
+    TIDAK berubah dari v3 — hanya ukuran font dan geometri layout."""
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
     y = draw_header_v3(d, 6)
@@ -645,14 +671,14 @@ def render_a(path):
     # hero 1-3
     gap = 12
     cw = (W - 52 - gap * 2) // 3
-    hero_h = 188
+    hero_h = 207
     for c in range(3):
         x = 26 + c * (cw + gap)
         hero_card_photo(d, x, y, cw, hero_h, MAIN[c])
     y += hero_h + 4
     # kartu kecil 4-11: 2 baris x 4 kolom
     scw = (W - 52 - gap * 3) // 4
-    sch = 168
+    sch = 162
     for r in range(2):
         for c in range(4):
             idx = 3 + r * 4 + c
@@ -662,18 +688,18 @@ def render_a(path):
     # bawah: peta blok kiri + ALSO kanan
     d.line([26, y, W - 26, y], fill=RULE, width=2)
     y += 6
-    d.text((26, y), "WHERE IT HAPPENED", font=font(SANSB, 14), fill=INK)
-    d.text((422, y), "ALSO ON THURSDAY 19 NOVEMBER \u2014 22 MORE STORIES",
-           font=font(SANSB, 14), fill=INK)
+    d.text((26, y), "WHERE IT HAPPENED", font=font(SANSB, 13), fill=INK)
+    d.text((462, y), "ALSO ON THURSDAY 19 NOVEMBER \u2014 22 MORE STORIES",
+           font=font(SANSB, 13), fill=INK)
     y += 19
-    map_h = 232
-    draw_map(d, 26, y, 26 + 380, y + map_h, pin_r=10)
-    y2 = draw_also(d, y, cols=2, item_size=10, x0=422)
+    map_h = 250
+    draw_map(d, 26, y, 26 + 420, y + map_h)
+    y2 = draw_also(d, y, cols=2, item_size=9.5, x0=462)
     print("ALSO bottom:", y2, "map bottom:", y + map_h)
     assert y2 <= y + map_h + 4, f"ALSO overflows map block: {y2} > {y + map_h}"
     y = y + map_h + 6
     y = draw_judge_footer(d, y)
-    print("v3 end y =", y)
+    print("v4 end y =", y)
     assert y <= 1022, f"end y {y} exceeds canvas"
     img.save(path, optimize=True)
     print("A saved", path, "end y =", y)
