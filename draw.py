@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw entry.png for news-image-20261119: 'The World - Thursday 19 November 2026'.
+"""Draw entry.png v3 for news-image-20261119: 'The World - Thursday 19 November 2026'.
 
 Classic newspaper front page, 1024x1024, cream paper. All story text is the
 verified set supplied with the task; nothing is invented here. Two layouts:
@@ -8,6 +8,7 @@ verified set supplied with the task; nothing is invented here. Two layouts:
 Render:  python3 draw.py A   -> variant_a.png
          python3 draw.py B   -> variant_b.png
 """
+import os
 import sys
 from PIL import Image, ImageDraw, ImageFont
 
@@ -379,6 +380,179 @@ def draw_map(d, x0, y0, x1, y1, pin_r=11):
     d.text((x0 + 8, y0 + 6), lab, font=lab_f, fill=RED)
 
 
+
+# ------------------------------------------------------------------- photos
+# Fotorealistik HD (1920x1280, hasil generate) di photos/ di bawah repo.
+# draw.py load via path relatif terhadap file ini (kit me-re-run draw.py
+# dari repo, jadi foto ikut di-push). Crop tengah deterministik ke aspek
+# slot, resize LANCZOS (downscale dari 1920px -> tajam, tidak buram).
+HERE = os.path.dirname(os.path.abspath(__file__))
+PHOTOS = os.path.join(HERE, "photos")
+PHOTO_FILES = {
+    1: "hero1-gulf.webp", 2: "hero2-shenzhen.webp", 3: "hero3-oneonone.webp",
+    4: "card4-nvidia.webp", 5: "card5-gtavi.webp", 6: "card6-eu.webp",
+    7: "card7-crimea.webp", 8: "card8-voyager.webp", 9: "card9-icj.webp",
+    10: "card10-cyclone.webp", 11: "card11-fed.webp",
+}
+_photo_cache = {}
+
+
+def photo_slot(n, w, h):
+    key = (n, w, h)
+    if key in _photo_cache:
+        return _photo_cache[key]
+    im = Image.open(os.path.join(PHOTOS, PHOTO_FILES[n])).convert("RGB")
+    sw, sh = im.size
+    target = w / h
+    srcc = sw / sh
+    if srcc > target:
+        nw = int(sh * target)
+        x0 = (sw - nw) // 2
+        im = im.crop((x0, 0, x0 + nw, sh))
+    else:
+        nh = int(sw / target)
+        y0 = (sh - nh) // 2
+        im = im.crop((0, y0, sw, y0 + nh))
+    im = im.resize((w, h), Image.LANCZOS)
+    _photo_cache[key] = im
+    return im
+
+
+# Angka-angka di strip ini HANYA yang benar-benar ada di teks 33 berita:
+#  EUR45bn = head #6; 99 = deck #5; 50 yrs = deck #8 ("almost 50 years");
+#  56-44 = ALSO #18; $582m = ALSO #23; 133 = ALSO #32.
+NUMBERS = [
+    ("\u20ac45bn", "EU loan for Kyiv"),
+    ("99", "GTA VI on Metacritic"),
+    ("50 yrs", "Voyager 1 in space"),
+    ("56\u201344", "Peltola Senate win"),
+    ("$582m", "Epstein-linked deals"),
+    ("133", "Duckett, third ODI"),
+]
+
+# Slot UTC HANYA dari berita kita (tanpa jam yang tidak ada di teks:
+# fase hari dipakai, bukan jam fiktif; Banxico TIDAK ada di berita kita).
+UTC_SLOTS = [
+    ("EARLY", "GTA VI begins global rollout"),
+    ("MORNING", "World court rules on Myanmar"),
+    ("DAY", "Trump, Xi and Putin in Shenzhen"),
+    ("AFTERNOON", "Voyager 1: one light-day"),
+    ("EVENING", "Fed minutes: more rate rises"),
+]
+
+
+def draw_numbers_strip(d, y, h=34):
+    d.line([26, y, W - 26, y], fill=RULE, width=1)
+    cw = (W - 52) // 6
+    big_f = font(SERIFB, 20)
+    cap_f = font(SANS, 9)
+    for i, (num, cap) in enumerate(NUMBERS):
+        cx = 26 + i * cw + cw // 2
+        d.text((cx, y + 2), num, font=big_f, fill=RED, anchor="ma")
+        d.text((cx, y + 24), cap, font=cap_f, fill=INK, anchor="ma")
+        if i:
+            d.line([26 + i * cw, y + 5, 26 + i * cw, y + h - 5],
+                   fill=(210, 200, 175), width=1)
+    d.line([26, y + h, W - 26, y + h], fill=RULE, width=1)
+    return y + h
+
+
+def draw_utc_strip(d, y, h=26):
+    d.rectangle([26, y, 26 + 108, y + h], fill=RED)
+    lab_f = font(SANSB, 11)
+    d.text((26 + 54, y + h // 2), "THE DAY IN UTC", font=lab_f,
+           fill=(255, 255, 255), anchor="mm")
+    x0 = 26 + 108 + 8
+    cw = (W - 26 - x0) // 5
+    ph_f = font(SANSB, 10)
+    ev_f = font(SANS, 10)
+    for i, (ph, ev) in enumerate(UTC_SLOTS):
+        x = x0 + i * cw
+        assert ev_f.getlength(ev) <= cw - 6, f"UTC slot overflows: {ev!r}"
+        d.text((x, y + 2), ph, font=ph_f, fill=RED)
+        d.text((x, y + 13), ev, font=ev_f, fill=INK)
+    d.line([26, y + h, W - 26, y + h], fill=RULE, width=1)
+    return y + h
+
+
+def draw_header_v3(d, y):
+    centered(d, W // 2, y, "THE WORLD", font(SERIFB, 46), INK)
+    y += 46 + 3
+    d.line([26, y, W - 26, y], fill=RULE, width=2)
+    y += 4
+    centered(d, W // 2, y, "THURSDAY 19 NOVEMBER 2026", font(SANSB, 16), INK)
+    y += 20
+    centered(d, W // 2, y, "33 STORIES  \u00b7  6 CONTINENTS  \u00b7  ONE PAGE",
+             font(SANS, 12), MUTED)
+    y += 14
+    d.line([26, y, W - 26, y], fill=RULE, width=1)
+    return y + 5
+
+
+def hero_card_photo(d, x, y, w, h, s, photo_h=64):
+    """Kartu hero 1-3: panel foto selebar kartu di atas, teks di bawah."""
+    num_f = font(SERIFB, 20)
+    kick_f = font(SANSB, 11)
+    head_f = font(SERIFB, 17)
+    deck_f = font(SANS, 14)
+    d.rectangle([x, y, x + w, y + h], fill=(253, 251, 243), outline=RULE, width=1)
+    d._image.paste(photo_slot(s["n"], w - 2, photo_h), (x + 1, y + 1))
+    ty = y + photo_h + 6
+    d.rectangle([x + 8, ty, x + 30, ty + 22], fill=RED)
+    num = str(s["n"])
+    d.text((x + 19 - num_f.getlength(num) / 2, ty - 1), num, font=num_f,
+           fill=(255, 255, 255))
+    kw = kick_f.getlength(s["kicker"])
+    assert kw <= w - 40, f"hero {s['n']} kicker overflows: {kw:.1f}px"
+    d.text((x + 36, ty + 4), s["kicker"], font=kick_f, fill=RED)
+    yy = ty + 26
+    for ln in wrap(s["head"], head_f, w - 16):
+        assert head_f.getlength(ln) <= w - 16, f"hero {s['n']} head overflows"
+        d.text((x + 8, yy), ln, font=head_f, fill=INK)
+        yy += 18
+    yy += 3
+    for ln in wrap(s["deck"], deck_f, w - 16):
+        assert deck_f.getlength(ln) <= w - 16, f"hero {s['n']} deck overflows"
+        d.text((x + 8, yy), ln, font=deck_f, fill=(38, 36, 32))
+        yy += 15
+    margin = y + h - yy
+    print(f"hero {s['n']}: bottom margin {margin}px")
+    assert margin >= 2, f"hero {s['n']} text overflows by {-margin}px"
+    return yy
+
+
+def small_card_photo(d, x, y, w, h, s, photo_h=30):
+    """Kartu kecil 4-11: banner foto di atas, teks di bawah (deck 14pt)."""
+    num_f = font(SERIFB, 18)
+    kick_f = font(SANSB, 11)
+    head_f = font(SERIFB, 16)
+    deck_f = font(SANS, 14)
+    d.rectangle([x, y, x + w, y + h], fill=(253, 251, 243), outline=RULE, width=1)
+    d._image.paste(photo_slot(s["n"], w - 2, photo_h), (x + 1, y + 1))
+    ty = y + photo_h + 4
+    d.rectangle([x + 8, ty, x + 28, ty + 20], fill=RED)
+    num = str(s["n"])
+    d.text((x + 18 - num_f.getlength(num) / 2, ty - 1), num, font=num_f,
+           fill=(255, 255, 255))
+    kw = kick_f.getlength(s["kicker"])
+    assert kw <= w - 44, f"small {s['n']} kicker overflows: {kw:.1f}px"
+    d.text((x + 34, ty + 4), s["kicker"], font=kick_f, fill=RED)
+    yy = ty + 22
+    for ln in wrap(s["head"], head_f, w - 16):
+        assert head_f.getlength(ln) <= w - 16, f"small {s['n']} head overflows"
+        d.text((x + 8, yy), ln, font=head_f, fill=INK)
+        yy += 16
+    yy += 2
+    for ln in wrap(s["deck"], deck_f, w - 16):
+        assert deck_f.getlength(ln) <= w - 16, f"small {s['n']} deck overflows"
+        d.text((x + 8, yy), ln, font=deck_f, fill=(38, 36, 32))
+        yy += 14
+    margin = y + h - yy
+    print(f"small {s['n']}: bottom margin {margin}px")
+    assert margin >= 2, f"small {s['n']} text overflows by {-margin}px"
+    return yy
+
+
 # ----------------------------------------------------------------- header
 def draw_header(d, y, mast_size=72):
     centered(d, W // 2, y, "THE WORLD", font(SERIFB, mast_size), INK)
@@ -418,23 +592,17 @@ def draw_story(d, x, y, w, s, head_size=18, deck_size=14, max_deck_lines=3):
     return y
 
 
-def draw_also(d, y, cols=2, item_size=12.5):
-    head_f = font(SANSB, 14)
+def draw_also(d, y, cols=2, item_size=12.5, x0=26):
+    # v3: header ("ALSO ON ...") drawn by caller; this only lists items
+    # starting at x0. Returns bottom y.
     item_f = font(SANS, item_size)
-    d.line([26, y, W - 26, y], fill=RULE, width=2)
-    y += 6
-    d.text((26, y), "ALSO ON THURSDAY 19 NOVEMBER — 22 MORE STORIES",
-           font=head_f, fill=INK)
-    y += 19
-    d.line([26, y, W - 26, y], fill=RULE, width=1)
-    y += 6
     gap = 18
-    cw = (W - 52 - gap * (cols - 1)) // cols
+    cw = (W - 26 - x0 - gap * (cols - 1)) // cols
     per_col = (len(ALSO) + cols - 1) // cols
     top = y
     bottom = y
     for c in range(cols):
-        x = 26 + c * (cw + gap)
+        x = x0 + c * (cw + gap)
         yy = top
         for num, place, txt in ALSO[c * per_col:(c + 1) * per_col]:
             line = "%d. %s — %s" % (num, place, txt)
@@ -465,33 +633,48 @@ def draw_judge_footer(d, y):
 
 # ---------------------------------------------------------------- layout A
 def render_a(path):
+    """v3: masthead padat + strip angka + strip UTC + 3 hero foto +
+    8 kartu kecil foto (2 baris x 4) + peta blok bawah-kiri + ALSO 22.
+    Isi 33 berita, Judge Note dan footer TIDAK berubah dari v2."""
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
-    y = draw_header(d, 8, mast_size=60)
-    # map band (taller than v1: 188 px, lat -60..84 so no coast is clipped)
-    map_top = y
-    draw_map(d, 26, map_top, W - 26, map_top + 188)
-    y = map_top + 188 + 4
-    # 11 stories: rows 1-3 in 3 columns, row 4 has stories 10 and 11 each
-    # half the grid wide, so no empty cell is left in the bottom-right.
-    gap = 16
+    y = draw_header_v3(d, 6)
+    y = draw_numbers_strip(d, y + 2)
+    y = draw_utc_strip(d, y + 2)
+    y += 6
+    # hero 1-3
+    gap = 12
     cw = (W - 52 - gap * 2) // 3
-    hw = (W - 52 - gap) // 2
-    row_h = [120, 120, 120, 86]
-    for r in range(3):
-        for c in range(3):
-            idx = r * 3 + c
-            x = 26 + c * (cw + gap)
-            draw_story(d, x, y, cw, MAIN[idx])
-        d.line([26, y + row_h[r] - 1, W - 26, y + row_h[r] - 1],
-               fill=(210, 200, 175), width=1)
-        y += row_h[r]
-    for c, idx in enumerate((9, 10)):
-        x = 26 + c * (hw + gap)
-        draw_story(d, x, y, hw, MAIN[idx])
-    y += row_h[3]
-    y = draw_also(d, y, cols=2, item_size=12.5)
-    y = draw_judge_footer(d, y + 4)
+    hero_h = 188
+    for c in range(3):
+        x = 26 + c * (cw + gap)
+        hero_card_photo(d, x, y, cw, hero_h, MAIN[c])
+    y += hero_h + 4
+    # kartu kecil 4-11: 2 baris x 4 kolom
+    scw = (W - 52 - gap * 3) // 4
+    sch = 168
+    for r in range(2):
+        for c in range(4):
+            idx = 3 + r * 4 + c
+            x = 26 + c * (scw + gap)
+            small_card_photo(d, x, y + r * (sch + 4), scw, sch, MAIN[idx])
+    y += 2 * sch + 4 + 4
+    # bawah: peta blok kiri + ALSO kanan
+    d.line([26, y, W - 26, y], fill=RULE, width=2)
+    y += 6
+    d.text((26, y), "WHERE IT HAPPENED", font=font(SANSB, 14), fill=INK)
+    d.text((422, y), "ALSO ON THURSDAY 19 NOVEMBER \u2014 22 MORE STORIES",
+           font=font(SANSB, 14), fill=INK)
+    y += 19
+    map_h = 232
+    draw_map(d, 26, y, 26 + 380, y + map_h, pin_r=10)
+    y2 = draw_also(d, y, cols=2, item_size=10, x0=422)
+    print("ALSO bottom:", y2, "map bottom:", y + map_h)
+    assert y2 <= y + map_h + 4, f"ALSO overflows map block: {y2} > {y + map_h}"
+    y = y + map_h + 6
+    y = draw_judge_footer(d, y)
+    print("v3 end y =", y)
+    assert y <= 1022, f"end y {y} exceeds canvas"
     img.save(path, optimize=True)
     print("A saved", path, "end y =", y)
 
@@ -547,6 +730,6 @@ def render_b(path):
 if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "A"
     if which.upper() == "A":
-        render_a("variant_a.png")
+        render_a("entry.png")
     else:
         render_b("variant_b.png")
