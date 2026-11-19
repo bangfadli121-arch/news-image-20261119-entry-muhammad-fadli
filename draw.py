@@ -140,13 +140,18 @@ ALSO = [
 
 # ------------------------------------------------------- continents (lon, lat)
 CONTINENTS = [
-    # North America
+    # North America (Hudson Bay carved in, Florida and Baja drawn out,
+    # Arctic coast kept below lat 73 so nothing is clipped at the top)
     [(-168, 66), (-150, 70), (-135, 70), (-125, 72), (-115, 73), (-105, 72),
-     (-95, 80), (-85, 73), (-78, 71), (-68, 66), (-60, 60), (-55, 52),
-     (-60, 46), (-68, 44), (-74, 39), (-76, 35), (-80, 32), (-81, 26),
-     (-84, 30), (-89, 21), (-90, 16), (-95, 18), (-100, 20), (-105, 22),
-     (-110, 24), (-115, 30), (-120, 34), (-124, 40), (-124, 48), (-130, 55),
-     (-140, 60), (-152, 58), (-162, 58), (-168, 66)],
+     (-95, 73), (-85, 73), (-80, 70), (-85, 66), (-90, 62), (-93, 58),
+     (-92, 54), (-87, 52), (-82, 51), (-79, 54), (-77, 58), (-72, 60),
+     (-68, 62), (-64, 60), (-60, 58), (-56, 52), (-60, 47), (-65, 44),
+     (-70, 42), (-74, 39), (-76, 35), (-80, 32), (-81, 27), (-80, 25),
+     (-84, 30), (-89, 29), (-94, 29), (-97, 26), (-97, 21), (-94, 18),
+     (-90, 15), (-92, 14), (-95, 16), (-100, 18), (-105, 20), (-110, 23),
+     (-112, 28), (-115, 31), (-118, 34), (-121, 35), (-124, 40), (-124, 48),
+     (-128, 52), (-133, 56), (-140, 60), (-148, 60), (-155, 58),
+     (-162, 58), (-166, 61), (-168, 66)],
     # Greenland
     [(-45, 60), (-32, 68), (-20, 70), (-25, 76), (-40, 80), (-55, 77),
      (-58, 71), (-53, 64), (-45, 60)],
@@ -195,21 +200,22 @@ CONTINENTS = [
 # ------------------------------------------------------------------- icons
 # Flat vector-style icons, drawn with PIL shapes inside a box (x, y, w, h).
 def icon_missile(d, x, y, w, h):
-    # slim diagonal missile: long grey body, red nose cone, small flame
-    d.polygon([(x + w * .58, y + h * .06), (x + w * .86, y + h * .34),
-               (x + w * .74, y + h * .46), (x + w * .46, y + h * .18)],
-              fill=(90, 90, 88))
-    d.polygon([(x + w * .58, y + h * .06), (x + w * .86, y + h * .34),
-               (x + w * .74, y + h * .46)], fill=RED)
-    d.polygon([(x + w * .46, y + h * .18), (x + w * .74, y + h * .46),
-               (x + w * .62, y + h * .62), (x + w * .44, y + h * .44)],
+    # Upright rocket, nose up: red nose cone, pale body with a red band and
+    # a round window, red fins, and a two-tone flame trail below.
+    cx = x + w / 2
+    d.polygon([(cx, y + 1), (cx + 7, y + 10), (cx - 7, y + 10)], fill=RED)
+    d.rectangle([cx - 7, y + 10, cx + 7, y + 26], fill=(228, 228, 222),
+                outline=(90, 90, 88))
+    d.rectangle([cx - 7, y + 17, cx + 7, y + 20], fill=RED)
+    d.ellipse([cx - 3, y + 12, cx + 3, y + 16], fill=(120, 180, 200))
+    d.polygon([(cx - 7, y + 20), (cx - 14, y + 29), (cx - 7, y + 27)],
+              fill=RED)
+    d.polygon([(cx + 7, y + 20), (cx + 14, y + 29), (cx + 7, y + 27)],
+              fill=RED)
+    d.polygon([(cx - 5, y + 27), (cx + 5, y + 27), (cx, y + h - 1)],
               fill=(240, 160, 40))
-    d.polygon([(x + w * .46, y + h * .18), (x + w * .30, y + h * .26),
-               (x + w * .36, y + h * .42)], fill=RED)
-    d.polygon([(x + w * .74, y + h * .46), (x + w * .84, y + h * .60),
-               (x + w * .66, y + h * .56)], fill=RED)
-    for cx, cy in [(x + w * .12, y + h * .12), (x + w * .88, y + h * .85)]:
-        d.ellipse([cx - 2, cy - 2, cx + 2, cy + 2], fill=GOLD)
+    d.polygon([(cx - 2.5, y + 27), (cx + 2.5, y + 27), (cx, y + h - 4)],
+              fill=(250, 220, 80))
 
 
 def icon_summit(d, x, y, w, h):
@@ -223,12 +229,21 @@ def icon_summit(d, x, y, w, h):
 
 
 def icon_table(d, x, y, w, h):
-    d.rectangle([x + 4, y + h * .55, x + w - 4, y + h * .62], fill=(120, 80, 40))
-    d.rectangle([x + 8, y + h * .62, x + 12, y + h - 2], fill=(120, 80, 40))
-    d.rectangle([x + w - 12, y + h * .62, x + w - 8, y + h - 2], fill=(120, 80, 40))
-    for cx in (x + w * .3, x + w * .7):
-        d.ellipse([cx - 7, y + 4, cx + 7, y + 18], fill=INK)
-        d.rectangle([cx - 8, y + 20, cx + 8, y + h - 2], fill=RED)
+    # Two leaders seated at a table: a red flag and a blue flag on poles
+    # above, a round head and a seated body each side, the tabletop in
+    # front of them. Reads as a two-party summit meeting.
+    for fx, col in ((.28, RED), (.72, (40, 90, 140))):
+        px = x + w * fx
+        d.line([px, y + 2, px, y + 12], fill=INK, width=2)
+        d.polygon([(px, y + 2), (px + 11, y + 5), (px, y + 8)], fill=col)
+    for fx, col in ((.22, RED), (.78, (40, 90, 140))):
+        cx = x + w * fx
+        d.polygon([(cx - 8, y + h - 4), (cx + 8, y + h - 4),
+                   (cx + 5, y + 18), (cx - 5, y + 18)], fill=col)
+        d.ellipse([cx - 5, y + 9, cx + 5, y + 19], fill=INK)
+    d.rectangle([x + 6, y + 20, x + w - 6, y + 23], fill=(120, 80, 40))
+    d.rectangle([x + 10, y + 23, x + 14, y + h - 2], fill=(120, 80, 40))
+    d.rectangle([x + w - 14, y + 23, x + w - 10, y + h - 2], fill=(120, 80, 40))
 
 
 def icon_chip(d, x, y, w, h):
@@ -265,6 +280,9 @@ def icon_bank(d, x, y, w, h):
 
 def icon_bridge(d, x, y, w, h):
     d.arc([x + 2, y + 2, x + w - 2, y + h * 1.1], 180, 360, fill=RED, width=3)
+    for fx in (.28, .72):
+        cx = x + w * fx
+        d.line([cx, y + h * .28, cx, y + h * .8], fill=RED, width=3)
     for fx in (.2, .38, .56, .74):
         cx = x + w * fx
         d.line([cx, y + h * .35, cx, y + h * .8], fill=INK, width=2)
@@ -299,11 +317,11 @@ def icon_scales(d, x, y, w, h):
 
 
 def icon_storm(d, x, y, w, h):
-    cx, cy = x + w / 2, y + h / 2
+    cx, cy = x + w / 2, y + h / 2 - 2
     for r, a0, a1 in [(16, 20, 200), (12, 200, 340), (8, 340, 500), (4, 500, 640)]:
-        d.arc([cx - r, cy - r, cx + r, cy + r], a0, a1, fill=(40, 90, 140), width=3)
-    d.polygon([(cx - 2, cy + 4), (cx + 2, cy + 4), (cx + 6, cy + h / 2 - 2),
-               (cx - 6, cy + h / 2 - 2)], fill=RED)
+        d.arc([cx - r, cy - r, cx + r, cy + r], a0, a1, fill=(40, 90, 140), width=4)
+    d.polygon([(cx - 3, cy + 4), (cx + 3, cy + 4), (cx + 8, cy + h / 2 + 2),
+               (cx - 8, cy + h / 2 + 2)], fill=RED)
 
 
 def icon_chart(d, x, y, w, h):
@@ -326,7 +344,7 @@ ICONS = {"missile": icon_missile, "summit": icon_summit, "table": icon_table,
 # --------------------------------------------------------------------- map
 def project(x0, y0, x1, y1, lon, lat):
     px = x0 + (lon + 180.0) / 360.0 * (x1 - x0)
-    py = y0 + (78.0 - lat) / 136.0 * (y1 - y0)
+    py = y0 + (84.0 - lat) / 144.0 * (y1 - y0)
     return px, py
 
 
@@ -366,17 +384,17 @@ def draw_header(d, y, mast_size=72):
     centered(d, W // 2, y, "THE WORLD", font(SERIFB, mast_size), INK)
     y += mast_size + 4
     d.line([26, y, W - 26, y], fill=RULE, width=2)
-    y += 5
-    centered(d, W // 2, y, "THURSDAY 19 NOVEMBER 2026", font(SANSB, 22), INK)
-    y += 29
+    y += 4
+    centered(d, W // 2, y, "THURSDAY 19 NOVEMBER 2026", font(SANSB, 20), INK)
+    y += 26
     centered(d, W // 2, y, "33 STORIES  ·  6 CONTINENTS  ·  ONE PAGE",
-             font(SANS, 14), MUTED)
-    y += 20
+             font(SANS, 13), MUTED)
+    y += 17
     d.line([26, y, W - 26, y], fill=RULE, width=1)
-    return y + 6
+    return y + 5
 
 # -------------------------------------------------------------- story block
-def draw_story(d, x, y, w, s, head_size=18, deck_size=12, max_deck_lines=3):
+def draw_story(d, x, y, w, s, head_size=18, deck_size=14, max_deck_lines=3):
     """One numbered story. Returns bottom y."""
     num_f = font(SERIFB, 24)
     kick_f = font(SANSB, 12)
@@ -387,29 +405,29 @@ def draw_story(d, x, y, w, s, head_size=18, deck_size=12, max_deck_lines=3):
     num = str(s["n"])
     d.text((x + 14 - num_f.getlength(num) / 2, y + 1), num, font=num_f,
            fill=(255, 255, 255))
-    ICONS[s["icon"]](d, x + w - 44, y - 2, 44, 30)
+    ICONS[s["icon"]](d, x + w - 52, y - 2, 52, 34)
     d.text((x + 36, y + 6), s["kicker"], font=kick_f, fill=RED)
     y += 34
     for ln in wrap(s["head"], head_f, w):
         d.text((x, y), ln, font=head_f, fill=INK)
-        y += head_size + 2
+        y += head_size + 1
     y += 1
     for ln in wrap(s["deck"], deck_f, w)[:max_deck_lines]:
-        d.text((x, y), ln, font=deck_f, fill=(60, 58, 52))
-        y += deck_size + 2
+        d.text((x, y), ln, font=deck_f, fill=(38, 36, 32))
+        y += deck_size + 1
     return y
 
 
-def draw_also(d, y, cols=2, item_size=13):
+def draw_also(d, y, cols=2, item_size=12.5):
     head_f = font(SANSB, 14)
     item_f = font(SANS, item_size)
     d.line([26, y, W - 26, y], fill=RULE, width=2)
-    y += 7
+    y += 6
     d.text((26, y), "ALSO ON THURSDAY 19 NOVEMBER — 22 MORE STORIES",
            font=head_f, fill=INK)
-    y += 21
+    y += 19
     d.line([26, y, W - 26, y], fill=RULE, width=1)
-    y += 7
+    y += 6
     gap = 18
     cw = (W - 52 - gap * (cols - 1)) // cols
     per_col = (len(ALSO) + cols - 1) // cols
@@ -422,53 +440,58 @@ def draw_also(d, y, cols=2, item_size=13):
             line = "%d. %s — %s" % (num, place, txt)
             for ln in wrap(line, item_f, cw):
                 d.text((x, yy), ln, font=item_f, fill=INK)
-                yy += item_size + 2
-            yy += 1
+                yy += item_size + 1
         bottom = max(bottom, yy)
     return bottom
 
 
 def draw_judge_footer(d, y):
-    box_h = 38
+    box_h = 30
     d.rectangle([26, y, W - 26, y + box_h], outline=RED, width=2)
-    d.text((38, y + 4), "JUDGE NOTE:", font=font(SANSB, 12), fill=RED)
-    d.text((38, y + 20),
+    lab_f = font(SANSB, 12)
+    txt_f = font(SANS, 12)
+    lab = "JUDGE NOTE:  "
+    d.text((38, y + 8), lab, font=lab_f, fill=RED)
+    d.text((38 + lab_f.getlength(lab), y + 8),
            "Every story above happened, or was first reported, on Thursday 19 November 2026. "
            "Disputed claims are attributed, not stated as fact.",
-           font=font(SANS, 11), fill=INK)
-    y += box_h + 8
+           font=txt_f, fill=INK)
+    y += box_h + 6
     centered(d, W // 2, y,
              "Reporting: AP · Reuters · AFP · BBC · Al Jazeera · The Guardian · Financial Times",
-             font(SANS, 11), MUTED)
-    return y + 14
+             font(SANS, 12), MUTED)
+    return y + 12
 
 
 # ---------------------------------------------------------------- layout A
 def render_a(path):
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
-    y = draw_header(d, 10, mast_size=70)
-    # map band
+    y = draw_header(d, 8, mast_size=60)
+    # map band (taller than v1: 188 px, lat -60..84 so no coast is clipped)
     map_top = y
-    draw_map(d, 26, map_top, W - 26, map_top + 118)
-    y = map_top + 118 + 10
-    # 11 stories, 3 columns x 4 rows
+    draw_map(d, 26, map_top, W - 26, map_top + 188)
+    y = map_top + 188 + 4
+    # 11 stories: rows 1-3 in 3 columns, row 4 has stories 10 and 11 each
+    # half the grid wide, so no empty cell is left in the bottom-right.
     gap = 16
     cw = (W - 52 - gap * 2) // 3
-    row_h = 118
-    for r in range(4):
+    hw = (W - 52 - gap) // 2
+    row_h = [120, 120, 120, 86]
+    for r in range(3):
         for c in range(3):
             idx = r * 3 + c
-            if idx >= len(MAIN):
-                break
             x = 26 + c * (cw + gap)
-            draw_story(d, x, y + r * row_h, cw, MAIN[idx])
-        if r < 3:
-            d.line([26, y + (r + 1) * row_h - 7, W - 26, y + (r + 1) * row_h - 7],
-                   fill=(210, 200, 175), width=1)
-    y = y + 4 * row_h + 2
-    y = draw_also(d, y, cols=2, item_size=11)
-    y = draw_judge_footer(d, y + 5)
+            draw_story(d, x, y, cw, MAIN[idx])
+        d.line([26, y + row_h[r] - 1, W - 26, y + row_h[r] - 1],
+               fill=(210, 200, 175), width=1)
+        y += row_h[r]
+    for c, idx in enumerate((9, 10)):
+        x = 26 + c * (hw + gap)
+        draw_story(d, x, y, hw, MAIN[idx])
+    y += row_h[3]
+    y = draw_also(d, y, cols=2, item_size=12.5)
+    y = draw_judge_footer(d, y + 4)
     img.save(path, optimize=True)
     print("A saved", path, "end y =", y)
 
@@ -490,7 +513,7 @@ def render_b(path):
         d.text((hx, hy), ln, font=font(SERIFB, 26), fill=INK)
         hy += 30
     for ln in wrap(hero["deck"], font(SANS, 13), W - 52 - 180):
-        d.text((hx, hy), ln, font=font(SANS, 13), fill=(60, 58, 52))
+        d.text((hx, hy), ln, font=font(SANS, 13), fill=(38, 36, 32))
         hy += 17
     ICONS["missile"](d, W - 190, y + 10, 140, 66)
     y += 84 + 8
