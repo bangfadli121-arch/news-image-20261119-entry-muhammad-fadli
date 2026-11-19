@@ -98,3 +98,38 @@ and the PACIFIC OCEAN label overflowed the map's left edge (re-centred
 to lon −136 after measuring its 94 px width). End y is 1015 of 1024,
 last ink row 1016 (7 px bottom gap); 2x runs byte-identical
 (sha256 c435fcf87ec736743f9ad6a8e29d1c471186f180c21d362686b6e0ce616391ab).
+
+## v5 (19 Nov 2026, revision of v4 — fadli: gambar 4-11 kecil bngt, tulisan diperkecil tapi jelas, gambar diperbesar, peta lebih nyata)
+
+Same 33 stories, word for word (verified: AST compare v4→v5 — MAIN,
+ALSO, NUMBERS, UTC_SLOTS, CONTINENTS identical; main.py unchanged).
+Three changes over v4: (1) photos much bigger again, type smaller but
+darker — small-card banners 56→84 px (cards 162→174 px, banner 48% of
+card height), hero panels 100→115 px (hero 202 px, 57% photo); headline
+15→14 pt (hero) and 14→13 pt (small), deck 12→11 pt / 11→10 pt, ALSO
+9.5→9 pt, kicker 10→9 pt, masthead 40→37 pt, numbers strip 30→27 px
+(big 16 pt), UTC strip 22→20 px (event 8 pt), so the page still ends at
+1014 of 1024; ink darkened for legibility (headline RGB 16, deck RGB 30,
+subtitle/footer muted darkened) — full-size text stays sharp, ALSO 9 pt
+verified readable at 1024 px (at a 300 px thumbnail only the structure
+reads, as with any dense front page); (2) per-photo crop focus instead
+of blind centre-crop (CROP_FOCUS in draw.py, chosen after viewing all 11
+photos: hero 3 shifted up 0.25 so both flags + heads show instead of
+backs + table, hero 2 down 0.60 so the three flags + table show, card 9
+up 0.35 so the tower spire + facade show, card 11 down 0.55 so the
+building + steps show instead of sky); (3) map redrawn more realistic —
+448x242 (was 420x250), soft deterministic terrain shading clipped to the
+land mask, 15 thin country-border lines for major states, 10 island
+groups added (Japan, Sumatra, Borneo, Java, New Guinea, Madagascar,
+New Zealand, Iceland, Cuba, Philippines — new ISLANDS list, CONTINENTS
+untouched), continent labels (EUROPE omitted on purpose: pins 6/7/9
+cover every spot a label could sit), compass rose bottom-left; pins
+r=8 (was 9), pin 8 Houston vs pin 5 Miami centres 19.5 px apart = 3.5 px
+clear gap, pin 11 still exactly on Washington DC with no offset, pin 9
+keeps its leader line. Honest limits: banner is 48% of card height, not
+quite half — a 90 px banner would need deck at 9 pt or a taller card
+that breaks the 1024 px budget; the 16 px pin discs still cover SE
+England's tip around Brussels (map scale, same as v4); terrain shading
+is soft mottling, not real elevation data. End y is 1014 of 1024, last
+ink row 1015 (8 px bottom gap); asserts all pass; 2x runs byte-identical
+(sha256 858432a5691d37a663c6237ade560db7f2d49aa2f56d46fb84ead8c5795d9e5f).
