@@ -57,3 +57,21 @@ larger list type, and a full story grid, while B left story 11 alone
 in the last row and its big hero missile illustration read as a kite.
 Both layouts fit all 33 stories with no clipped or truncated text;
 A simply reads better, including at thumbnail size.
+
+## v3 (19 Nov 2026, revision of v2)
+
+Same 33 stories, word for word (verified: git diff v2→v3 touches no
+MAIN/ALSO text); main.py unchanged. Three changes over v2, following the
+top 1–2 pattern: (1) all 11 main cards get real photorealistic photos —
+large panels (64 px) on heroes 1–3, photo banners on small cards 4–11
+(11 generated photos in photos/, 1920x1280, centre-cropped + LANCZOS
+downscale, no readable text in-frame, no close-up faces of real leaders;
+hero 3 flags are US + Russia, hero 2 hall has 3 flags); (2) a big-numbers
+strip under the masthead (€45bn · 99 · 50 yrs · 56–44 · $582m · 133 —
+every number verified present in the 33 stories) plus a "THE DAY IN UTC"
+strip with 5 slots drawn only from our stories (GTA VI rollout, ICJ
+Myanmar judgment, Shenzhen summit, Voyager, Fed minutes — no Banxico,
+no invented clock times, phases only); (3) the map is now a proportional
+block (380x232) at bottom-left beside the ALSO list, not a thin strip.
+End y is 1015 of 1024; asserts (kicker/headline/deck overflow, bottom
+margin per card, ALSO within map block) all pass; 2x runs byte-identical.
